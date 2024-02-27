@@ -137,7 +137,7 @@ class GetTestCases:
 
 if __name__ == '__main__':
     print(ENV.data_path)
-    a, data = data_from_excel(ENV.data_path, "Add")
+    a, data = data_from_excel(ENV.data_path, "baidu")
     print(a)
     for item in data:
         print(item)

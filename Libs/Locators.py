@@ -50,7 +50,7 @@ def get_locators_from_excel(excel_path, sheet_name):
         if row[0] is None:
             continue
         locator = Locator(row)
-        locators[locator.name] = Locator[row]
+        locators[locator.name] = Locator(row)
     return locators
 
 
@@ -83,4 +83,9 @@ class _LocatorWorkbook:
 BaiDu = _LocatorWorkbook(excel_path=os.path.join(LOCATOR_FILES_PATH, "baidu.xlsx"))
 
 if __name__ == '__main__':
+    print(BaiDu.HomePage.Logo.value)
+    print(BaiDu.HomePage.case_number("aaa").value)
+    print(BaiDu.HomePage.case_number.name)
+    print(BaiDu.HomePage.case_number.by)
     print(BaiDu.HomePage.case_number.value)
+    print(os.path.join(LOCATOR_FILES_PATH, "baidu.xlsx"))
