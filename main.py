@@ -59,7 +59,7 @@ class CollectorPlugin(object):
         self.__collect = list()
 
     def pytest_collection_finish(self, session):
-        for item in session.item:
+        for item in session.items:
             self.__collect.append(self.TestCase(item=item))
 
     def get_collect_result(self):
