@@ -9,6 +9,8 @@ import cx_Oracle
 
 import pymysql
 
+from Libs.Configs import Environment
+
 _logger = logging.getLogger(__name__)
 
 
@@ -180,3 +182,11 @@ def SQLset(config, db):
         _logger.error("can not this database %s" % e.__str__())
         raise e
     return dbase
+
+
+if __name__ == '__main__':
+    ENV = Environment("Test", "chrome")
+    dbconn = SQLset(config=ENV.SQLconfigs, db="testdb")
+    reslist = dbconn.fetchall("select * from db")
+    print(reslist)
+    del dbconn

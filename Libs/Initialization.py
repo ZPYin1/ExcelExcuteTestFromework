@@ -26,6 +26,8 @@ def argument_parser():
     parser.add_argument("-c", "--collect", action="store_true", help="Collect test case")
     parser.add_argument("-p", "--plan", help="Execute test cases according to the testing plan")
     parser.add_argument("-spec", "--specific", help="Execute specific test case")
+    parser.add_argument("-b", "--browser", default="edge", help="Run in which Browser")
+    parser.add_argument("-o", "--output", help="collection Output path")
 
     args = parser.parse_args()
     _logger.info("Start test with arg:%s" % args)
