@@ -2,6 +2,7 @@
 # time: 2023/12/21 16:45
 # file: Configs.py
 # author: ZPYin
+import json
 import os
 from configparser import ConfigParser
 
@@ -113,7 +114,7 @@ class _BaseConfig(object):
 class Environment:
     # 环境配置
     # 根据不同环境获取不同的配置数据
-    def __init__(self, env_name):
+    def __init__(self, env_name, browser_name='edge'):
         env_name = env_name.upper()
         if env_name in NameToEnv.keys():
             self.__env = NameToEnv[env_name]
@@ -121,9 +122,20 @@ class Environment:
         else:
             raise ValueError(f"Environment: {env_name} not in one of the environment key words")
 
+        self.__browser = browser_name.lower()
+
     @property
     def base_url(self):
         return self.__configs.base_url
+
+    @property
+    def configs(self):
+        return self.__configs
+
+    @property
+    def SQLconfigs(self):
+        sqlconf = self.__configs.SQL
+        return json.loads(sqlconf)
 
     @property
     def data_path(self):
@@ -157,6 +169,7 @@ class Environment:
 class INIConfig(object):
     pytest = _BaseConfig(PYTEST_INI_PATH, "pytest")
     config = _BaseConfig(PYTEST_INI_PATH, "config")
+
 
 if __name__ == '__main__':
     print(TOOL_ROOT_PATH)

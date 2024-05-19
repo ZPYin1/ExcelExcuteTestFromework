@@ -111,6 +111,7 @@ class OracleBase():
 
     def fetchall(self, statrment, **paraments):
         self.open_conn()
+        rs = None
         try:
             # 操作数据库（SQL语句不需要；号）
             self.__cursor.execute(statrment, paraments)
@@ -133,3 +134,49 @@ class OracleBase():
             return rs
         else:
             return None
+
+    def exec_update(self, statement, **paraments):
+        self.open_conn()
+        try:
+            self.__cursor.execute(statement, paraments)
+            self.__cursor.commit()
+        except Exception as e:
+            pass
+        finally:
+            rowcount = self.__cursor.rowcount
+        return rowcount
+
+    def callsp(self, proc, *params):
+        self.open_conn()
+        # construct parament list
+        param_array = ()
+        for param in params:
+            p = self.__cursor.var(param.param_type)
+            print(p)
+            if not param.out:
+                p.setvalue(0, param.value)
+            param_array += p
+            # call store procedure
+        try:
+            self.__cursor.callproc(proc, param_array)
+            for i, param in enumerate(params):
+                if param.out:
+                    param.value = param_array[i].getvalue()
+        except Exception as e:
+            print(e)
+
+
+def SQLset(config, db):
+    dbase = None
+    try:
+        if config['Type'] == 'Oracle':
+            dbase = OracleBase(hostname=config['dsn'], username=config['username'],
+                               pwd=config['password'], db=db)
+        elif config['Type'] == 'Mysql':
+            dbase = MySQLBase(host=config['dsn'].split(':')[0], user=config['username'],
+                              password=config['password'], db=db,
+                              port=config['dsn'].split(':')[1])
+    except Exception as e:
+        _logger.error("can not this database %s" % e.__str__())
+        raise e
+    return dbase
