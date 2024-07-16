@@ -5,6 +5,7 @@
 import logging
 
 import allure
+from selenium.common import NoSuchElementException
 
 _logger = logging.getLogger(__name__)
 
@@ -27,3 +28,10 @@ def NotEqual(actual, expect):
 @allure.step("Assert value Not In")
 def NotIn(actual, expect):
     assert actual not in expect
+
+def elemExist(driver, locator):
+    try:
+        driver.find_element(*locator)
+        return True
+    except NoSuchElementException:
+        return False

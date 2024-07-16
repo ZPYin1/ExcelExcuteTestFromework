@@ -1,25 +1,40 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# time: 2024/1/4 17:04
-# file: main.py
-# author: ZPYin
+# @Time    : 2024/4/25 16:44
+# @Author  : ZP Y
+# @Email   : zhanpeng.yin@kcomber.com
+# @File    : main.py
+# @Software: PyCharm
 import logging
-import os.path
+import os
 
 import pytest
 from allure_pytest import plugin
 
-from Libs.Configs import INIConfig, ALLURE_BAT
+from Libs.AllureInit import update_trend_data, get_dirname
+from Libs.Configs import INIConfig, ALLURE_BAT, ALLURE_RESULT_PATH
 from Libs.Utilities import get_line_value, generate_trace_spreadsheet, GetTestCases, get_timestamp
-from imported import environment_setup, get_argument_parser
+from imported import get_argument_parser, environment_setup
 
 _logger = logging.getLogger(__name__)
 
 
 class CollectorPlugin(object):
+
+    def __init__(self, callback=None):
+        self.__collect = list()
+
+    def pytest_collection_finish(self, session):
+        for item in session.items:
+            self.__collect.append(self.TestCase(item=item))
+
+    def get_collect_result(self):
+        return self.__collect
+
     class TestCase(object):
         def __init__(self, item):
             self.__id = item.nodeid
-            self.__function_name = item.name
+            self.__functon_name = item.name
             self.__author = "NOT_SET"
             self.__requirements = ["NOT_SET"]
             self.__description = "NOT_SET"
@@ -55,16 +70,6 @@ class CollectorPlugin(object):
                     self.__description += "\n"
                     self.__description += line.strip()
 
-    def __init__(self, callback=None):
-        self.__collect = list()
-
-    def pytest_collection_finish(self, session):
-        for item in session.items:
-            self.__collect.append(self.TestCase(item=item))
-
-    def get_collect_result(self):
-        return self.__collect
-
 
 def collect(agr_parser):
     if agr_parser.output and agr_parser.endwith(".xlsx"):
@@ -81,6 +86,7 @@ def collect(agr_parser):
 
 
 def run(agr_parser):
+    time_str = get_timestamp()
     environment_setup(agr_parser)
     pytest_args = list()
     if agr_parser.plan:
@@ -96,18 +102,38 @@ def run(agr_parser):
     elif agr_parser.mark and agr_parser.mark != "all":
         pytest_args.append("-m")
         pytest_args.append(agr_parser.mark)
-    pytest_args.append("--alluredir=./allure-results")
+    # pytest_args.append(f"--alluredir=./allure-results/{agr_parser.env}")
+    res_path = os.path.join(ALLURE_RESULT_PATH, agr_parser.env, get_timestamp())
+    pytest_args.append("--alluredir={allurepath}".format(allurepath=res_path))
     try:
-        pytest.main(pytest_args, plugins=[plugin])
+        # pytest.main(pytest_args, plugins=[plugin])
+        pytest.main(pytest_args)
     except ValueError:
         pytest.main(pytest_args)
     if agr_parser.generate:
         report_path = INIConfig.config.report_path
         if not os.path.exists(report_path):
             os.makedirs(report_path)
-        report_path = os.path.join(report_path, get_timestamp())
-        os.system("{allure} generate ./allure-results/ -o {report}".format(allure=ALLURE_BAT, report=report_path))
-        os.system("start {allure} open {report}".format(allure=ALLURE_BAT, report=report_path))
+        report_path = os.path.join('.', report_path, agr_parser.env, time_str)
+        # print(res_path)
+        # os.system("{allure} generate ./allure-results/{env} -o {report}".format(allure=ALLURE_BAT, env=agr_parser.env,
+        #                                                                         report=report_path))
+        print("{allure} generate {res_env} --clean -o {report}".format(allure=ALLURE_BAT,
+                                                                       res_env=res_path,
+                                                                       report=report_path))
+        os.system("{allure} generate {res_env} --clean -o {report}".format(allure=ALLURE_BAT,
+                                                                           res_env=res_path,
+                                                                           report=report_path))
+        # print(agr_parser.env)
+        print(report_path)
+        # os.system("{allure} open {report} -p {port}".format(allure=ALLURE_BAT, report=report_path,
+        #                                                     port=Environment(agr_parser.env).report_port))
+        # os.system("{allure} -q open {report} -p {port} ".format(allure=ALLURE_BAT, report=report_path,
+        #                                                         port=Environment(agr_parser.env).report_port))
+    a, b = get_dirname(arg_parser.env)
+    update_trend_data(time_str, b, arg_parser.env)
+    if agr_parser.browser:
+        pass
 
 
 if __name__ == '__main__':
@@ -116,3 +142,4 @@ if __name__ == '__main__':
         collect(arg_parser)
     else:
         run(arg_parser)
+

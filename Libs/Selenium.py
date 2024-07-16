@@ -1,59 +1,66 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# time: 2024/1/3 12:59
-# file: Selenium.py
-# author: ZPYin
+# @Time    : 2024/4/25 14:09
+# @Author  : ZP Y
+# @File    : Selenium.py
+# @Software: PyCharm
 import logging
 import os.path
 from typing import List
 from uuid import uuid1
-from selenium.webdriver import Chrome, Edge
 
+from selenium import webdriver
+from selenium.webdriver import Chrome, Firefox, Edge, FirefoxProfile
 import allure
 from selenium.common import NoSuchElementException
 from selenium.webdriver.common import action_chains, alert
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.remote import webelement, switch_to
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import select
 from selenium.webdriver.support.wait import WebDriverWait
 
-from Libs.Configs import TEMPORARY_PATH
+from Libs.Configs import TEMPORARY_PATH, LOCATOR_FILES_PATH
+from Libs.Utilities import get_operating_system
 
 _logger = logging.getLogger(__name__)
 
 
-# 对整个给selenium进行allure封装，增加DEBUG信息，和增加报告信息
-
+# 对整个给 selenium 进行 allure 封装，增加 DEBUG 信息，增加报告信息
 class WebElement(webelement.WebElement):
+
     def __init__(self, parent, _id):
         super(WebElement, self).__init__(parent=parent, id_=_id)
 
-    # @allure.step("Clicks the element.")
+    def __call__(self, locator) -> WebElement:
+        return self.find_element_by_locator(locator)
+
+    @allure.step("Click the element.")
     def click(self) -> None:
         super(WebElement, self).click()
 
-    # @allure.step("Clears the text if it's a text entry element.")
+    @allure.step("Clear the text if it's a text entry element.")
     def clear(self) -> None:
         super(WebElement, self).clear()
 
-    # @allure.step("Simulate typing into the element.")
+    @allure.step("Simulate typing into the element.")
     def send_keys(self, *value) -> None:
-        super(WebElement, self).send_keys()
+        super(WebElement, self).send_keys(value)
 
-    # @allure.step("Simulates select into the element")
+    @allure.step("Simulate select into the element")
     def select(self, visable_text):
         _ = Select(self)
         _.select_by_visible_text(visable_text)
 
     def find_element_by_locator(self, locator) -> WebElement:
-        # @allure.step("Find a child element with a locator. [Chr:{0}]".format(self._id))
+        @allure.step("Find a child element with a locator.[Chr:{0}]".format(self._id))
         def _(by, value, name, comment):
             return self.find_element(by, value)
 
         return _(by=locator.by, value=locator.value, name=locator.name, comment=locator.comment)
 
     def find_elements_by_locator(self, locator) -> List[WebElement]:
-        # @allure.step("Find a child elements with a locator. [Chr:{0}]".format(self._id))
         def _(by, value, name, comment):
             return super(WebElement, self).find_elements(by, value)
 
@@ -66,20 +73,9 @@ class WebElement(webelement.WebElement):
             self.catch_no_such_element_exception(by=by, value=value)
             raise NoSuchElementException("Unable to locate the child element.")
 
-    @allure.step("NoSuchElementException")
+    @allure.step("No Such Element Exception")
     def catch_no_such_element_exception(self, **kwargs):
-        self.attach_screenshot("No such Element Exception")
-
-    @allure.step("Find child element given a By strategy and locator")
-    def _find_element(self, by=By.ID, value=None) -> WebElement:
-        return super(WebElement, self).find_element(by, value)
-
-    @allure.step("Find child elements given a By strategy and locator")
-    def _find_elements(self, by=By.ID, value=None) -> List[WebElement]:
-        return super(WebElement, self).find_elements(by, value)
-
-    def __call__(self, locator) -> WebElement:
-        return self.find_element_by_locator(locator)
+        self.attach_screenshot("No Such Element Exception")
 
     def attach_screenshot(self, comment):
         filename = "{uuid}.png".format(uuid=uuid1())
@@ -87,29 +83,81 @@ class WebElement(webelement.WebElement):
         self.screenshot(filepath)
         allure.attach.file(filepath, comment, allure.attachment_type.PNG)
 
+    @allure.step("Move to element")
     def move_to_element(self):
         _ = ActionChains(self._parent)
         return _.move_to_element(to_element=self).perform()
+
+    @allure.step("Move to element and click")
+    def move_to_element_click(self):
+        _ = ActionChains(self._parent)
+        return _.move_to_element(to_element=self).click(on_element=self).perform()
 
 
 class WebDriver(object):
 
     @allure.step("Creates a new instance of the driver")
     def __init__(self, driver_name, **kwargs):
-        self._driver = driver_name
-        if driver_name in ["Chrome", "Edge"]:
-            if driver_name == "Chrome":
-                driver = Chrome
-            elif driver_name == "Edge":
-                driver = Edge
-            driver._web_element_cls = WebElement
+        driver = driver_name
+        system = get_operating_system()
+        if system == "Windows":
+            if driver_name in ["chrome", "edge", "firefox"]:
+                if driver_name == "chrome":
+                    driver = Chrome
+                elif driver_name == "firefox":
+                    driver = Firefox
+                else:
+                    driver = Edge
+                driver._web_element_cls = WebElement
+            else:
+                raise NotImplementedError(f"{driver_name} is not support now")
             self._driver = driver()
-            self._driver._switch_to = SwitchTo(self._driver)
+        elif system == "Linux":
+            if driver_name in ["chrome", "firefox"]:
+                option = None
+                profile = None
+                if driver_name == "firefox":
+                    options = webdriver.FirefoxOptions()
+                    options.add_argument('--no-sandbox')
+                    options.add_argument('--disable-dev-shm-usage')
+                    options.add_argument('--headless')
+                    options.set_preference("browser.helperApps.neverAsk.saveToDisk", "text/plain")
+                    # browser = webdriver.Firefox(options=options)
+                    profile = FirefoxProfile()
+                    profile.set_preference('intl.accept_languages', 'en-us, en')
+                    driver = Firefox
+                    driver._web_element_cls = WebElement
+                    self._driver=Firefox(options=options,firefox_profile=profile)
+                else:
+                    option = webdriver.ChromeOptions()
+                    option.add_argument('--disable-gpu')
+                    option.add_argument('--headless')
+                    option.add_argument('--no-sandbox')
+                    option.add_argument('--disable-extensions')
+                    option.add_argument('--disable-dev-shm-usage')
+                    option.add_argument('lang=en-us')
+                    driver = Chrome
+                    driver._web_element_cls = WebElement
+                    self._driver = driver(options=option)
+            else:
+                _logger.error("{driver_name} is not support now")
+                raise NotImplementedError(f"{driver_name} is not support now")
         else:
-            raise NotImplementedError(f"{driver_name} is not support now.")
+            raise NotImplementedError(f"{system} is not support now")
+
+            # if driver == "edge":
+            #     self._driver = driver(service_log_path=os.path.join(LOCATOR_FILES_PATH, "Chrom.log"))
+            # elif driver == "firefox":
+            #     self._driver = driver(service=Service(log_path=os.path.join(LOCATOR_FILES_PATH, "geckodriver.log")))
+            # else:
+
+        self._driver._switch_to = SwitchTo(self._driver)
+
+    def __call__(self, locator):
+        return self.find_element_by_locator(locator)
 
     @allure.step
-    def _get_cdp_details(self):
+    def _get_cdp_detatils(self):
         _logger.debug("Call <_get_cdp_details>")
         return self._driver._get_cdp_details()
 
@@ -122,18 +170,18 @@ class WebDriver(object):
     @allure.step
     def _wrap_value(self, value):
         _logger.debug("Call <_wrap_value>")
-        _logger.debug("value %s" % value)
+        _logger.debug("value: %s" % value)
         return self._driver._wrap_value(value)
 
     @allure.step
-    def add_cookie(self, cookies_dict):
-        _logger.debug("Call <add_cookies>")
-        _logger.debug("cookies_dict :%s" % cookies_dict)
-        return self._driver.add_cookie(cookies_dict)
+    def add_cookie(self, cookies_dice):
+        _logger.debug("Call <add_cookie>")
+        _logger.debug("cookies_dice: %s" % cookies_dice)
+        return self._driver.add_cookie(cookies_dice)
 
     @allure.step
     def add_credential(self, *args, **kwargs):
-        _logger.debug("Call <add_virtual_authenticator>")
+        _logger.debug("Call <add_credential>")
         _logger.debug("args: %s" % args)
         _logger.debug("kwarg: %s" % kwargs)
         return self._driver.add_credential(*args, **kwargs)
@@ -144,7 +192,7 @@ class WebDriver(object):
         _logger.debug("options: %s" % options)
         return self._driver.add_virtual_authenticator(options)
 
-    @allure.step("Foes one step backward in the browser history")
+    @allure.step("For one step backward in the browser history")
     def back(self):
         _logger.debug("Call <back>")
         return self._driver.back()
@@ -176,14 +224,6 @@ class WebDriver(object):
         _logger.debug("script: %s" % script)
         _logger.debug("args: %s" % args)
         return self._driver.execute_async_script(script, *args)
-
-    @allure.step
-    def execute_script(self, script, **args):
-        _logger.debug("Call <execute_script>")
-        _logger.debug("script: %s" % script)
-        if args:
-            _logger.debug("args: %s" % args)
-        return self._driver.execute_script(script, *args)
 
     @allure.step("Goes one step forward in the browser history.")
     def forward(self):
@@ -270,6 +310,7 @@ class WebDriver(object):
     @allure.step("Closes the browser and shuts down the Driver.")
     def quit(self):
         _logger.debug("Call <quit>")
+        self._driver.close()
         return self._driver.quit()
 
     @allure.step("Refresh the current page.")
@@ -329,11 +370,6 @@ class WebDriver(object):
         return self._driver.start_client()
 
     @allure.step
-    def stop_client(self):
-        _logger.debug("Call <stop_client>")
-        return self._driver.stop_client()
-
-    @allure.step
     def unpin(self, script_key):
         _logger.debug("Call <unpin>")
         _logger.debug("script_key: %s" % script_key)
@@ -357,7 +393,7 @@ class WebDriver(object):
             raise NoSuchElementException("Unable to locate the element")
 
     def catch_no_such_element_exception(self, **kwargs):
-        self.attach_screenshot("No Such Element Exception")
+        self.attach_screenshot(f"No Such Element Exception {kwargs}")
 
     @allure.step("Find elements given a By strategy and locator.")
     def find_elements(self, by=By.ID, value=None) -> List[WebElement]:
@@ -527,9 +563,6 @@ class WebDriver(object):
 
         return _(by=locator.by, value=locator.value, name=locator.name, comment=locator.comment)
 
-    def __call__(self, locator):
-        return self.find_element_by_locator(locator)
-
     def wait_unit(self, method, message="", timeout=3, poll_frequency=0.5, ignored_exceptions=None):
         wait = WebDriverWait(self, timeout=timeout, ignored_exceptions=ignored_exceptions,
                              poll_frequency=poll_frequency)
@@ -542,9 +575,15 @@ class WebDriver(object):
             if handle != cur_hand:
                 self._driver.switch_to.window(handle)
 
+    def window_handles(self):
+        return self._driver.window_handles
+
+    def execute_script(self, script, *args):
+        _logger.debug("Property <execute_script>")
+        return self._driver.execute_script(script, *args)
+
 
 class Alert(alert.Alert):
-
     def __init__(self, driver):
         super(Alert, self).__init__(driver)
 
@@ -564,6 +603,15 @@ class Alert(alert.Alert):
     @allure.step("Send keys to the Alert.")
     def send_keys(self, keys):
         return super(Alert, self).send_keys(keys)
+
+
+class ActionChains(action_chains.ActionChains):
+    def __init__(self, driver, duration=250):
+        super(ActionChains, self).__init__(driver, duration)
+
+    def move_to_element(self, to_element):
+        return super(ActionChains, self).move_to_element(to_element)
+
 
 
 class Select(select.Select):
@@ -614,25 +662,17 @@ class Select(select.Select):
         return super(Select, self).deselect_by_visible_text(text)
 
 
-class ActionChains(action_chains.ActionChains):
-    def __init__(self, driver, duration=250):
-        super(ActionChains, self).__init__(driver, duration)
-
-    def move_to_element(self, to_element):
-        return super(ActionChains, self).move_to_element(to_element)
-
-
 class SwitchTo(switch_to.SwitchTo):
     """
-    element = driver.switch_to.active_element
-    alert = driver.switch_to.alert
-    driver.switch_to.default_content()
-    driver.switch_to.frame('frame_name)
-    driver.switch_to.frame(1)
-    driver.switch_to.frame(driver.find_elements(By.TAG_NAME,"iframe")[0])
-    driver.switch_to.parent_frame()
-    driver.switch_to.window('main')
-    """
+        element = driver.switch_to.active_element
+        alert = driver.switch_to.alert
+        driver.switch_to.default_content()
+        driver.switch_to.frame('frame_name)
+        driver.switch_to.frame(1)
+        driver.switch_to.frame(driver.find_elements(By.TAG_NAME,"iframe")[0])
+        driver.switch_to.parent_frame()
+        driver.switch_to.window('main')
+        """
 
     def __init__(self, driver):
         super(SwitchTo, self).__init__(driver=driver)

@@ -8,16 +8,20 @@ from configparser import ConfigParser
 
 VERSION = "0.0.1"
 TOOL_ROOT_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..")
-PYTEST_INI_PATH = os.path.join(TOOL_ROOT_PATH, "pytest.ini")
+PYTEST_INI_PATH = os.path.join(TOOL_ROOT_PATH, 'pytest.ini')
 
-TEMPORARY_PATH = os.path.join(TOOL_ROOT_PATH, "Temporary")
-RESOURCES_PATH = os.path.join(TOOL_ROOT_PATH, "Resources")
+TEMPORARY_PATH = os.path.join(TOOL_ROOT_PATH, 'Temporary')
+RESOURCES_PATH = os.path.join(TOOL_ROOT_PATH, 'Resources')
+
+ALLURE_RESULT_PATH = os.path.join(TOOL_ROOT_PATH, 'allure-results')
+REPORT_PATH = os.path.join(TOOL_ROOT_PATH, 'Reports')
+
 
 DATA_FILES_PATH = os.path.join(RESOURCES_PATH, "DataFiles")
 PROGRAM_FILES_PATH = os.path.join(RESOURCES_PATH, "ProgramFiles")
 LOCATOR_FILES_PATH = os.path.join(RESOURCES_PATH, "LocatorFiles")
-
 ALLURE_BAT = os.path.join(PROGRAM_FILES_PATH, "allure", "bin", "allure.bat")
+
 
 PROD = 40
 STAGING = 30
@@ -169,6 +173,7 @@ class Environment:
 class INIConfig(object):
     pytest = _BaseConfig(PYTEST_INI_PATH, "pytest")
     config = _BaseConfig(PYTEST_INI_PATH, "config")
+    Log = _BaseConfig(PYTEST_INI_PATH, "log")
 
 
 if __name__ == '__main__':
