@@ -1,0 +1,6 @@
+/Logs/
+/Reports/
+/venv/
+/Temporary/
+/allure-results/
+/.pytest_cache/

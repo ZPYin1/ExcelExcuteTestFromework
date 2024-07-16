@@ -1,9 +1,10 @@
-selenium==4.9.1
-pytest==7.3.1
-allure_pytest==2.13.2
+selenium~=4.11.2
+allure-pytest==2.13.5
+pymysql==1.1.1
+cx_Oracle==8.3.0
 openpyxl==3.1.2
 pytesseract==0.3.10
 Pillow==9.5.0
-requests==2.30.0
-mysql-connector==2.2.9
-cx-Oracle==8.3.0
+urllib3==1.26.18
+pytest-rerunfailures==13.0
+requests==2.31.0

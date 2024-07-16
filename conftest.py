@@ -24,3 +24,7 @@ def driver():
 @pytest.fixture(scope="function", autouse=True)
 def clearcookies(driver: WebDriver):
     driver.delete_all_cookies()
+    yield
+    # 刷新页面，减少缓存
+    driver.refresh()
+    driver.delete_all_cookies()
